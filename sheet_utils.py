@@ -1,5 +1,7 @@
 # sheet_utils.py
 import logging
+import os
+import json
 from typing import List, Dict, Tuple
 from datetime import datetime, date
 
@@ -11,7 +13,6 @@ import config
 log = logging.getLogger("sheet_utils")
 
 # --- Google auth setup ---
-GOOGLE_CREDENTIALS_FILE = getattr(config, "GOOGLE_CREDENTIALS_FILE", "credentials.json")
 SHEET_ID = getattr(config, "SHEET_ID", None)
 GOOGLE_SHEET_NAME = getattr(config, "GOOGLE_SHEET_NAME", None)  # fallback
 SHEET_NAME = getattr(config, "SHEET_NAME", "Sheet1")
@@ -20,7 +21,15 @@ DATE_FORMATS = config.DATE_FORMATS
 OUTPUT_DATE_FORMAT = getattr(config, "OUTPUT_DATE_FORMAT", "%d/%m/%Y")
 
 SCOPE = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-CREDS = ServiceAccountCredentials.from_json_keyfile_name(GOOGLE_CREDENTIALS_FILE, SCOPE)
+
+# 🔑 Load credentials either from environment variable or fallback file
+if os.getenv("GOOGLE_CREDENTIALS_JSON"):
+    creds_json = json.loads(os.environ["GOOGLE_CREDENTIALS_JSON"])
+    CREDS = ServiceAccountCredentials.from_json_keyfile_dict(creds_json, SCOPE)
+else:
+    GOOGLE_CREDENTIALS_FILE = getattr(config, "GOOGLE_CREDENTIALS_FILE", "credentials.json")
+    CREDS = ServiceAccountCredentials.from_json_keyfile_name(GOOGLE_CREDENTIALS_FILE, SCOPE)
+
 GC = gspread.authorize(CREDS)
 
 # === HEADERS must match your Google Sheet exactly ===
