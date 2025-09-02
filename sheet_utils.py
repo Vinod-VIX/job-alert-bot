@@ -22,13 +22,18 @@ OUTPUT_DATE_FORMAT = getattr(config, "OUTPUT_DATE_FORMAT", "%d/%m/%Y")
 
 SCOPE = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 
-# 🔑 Load credentials either from environment variable or fallback file
-if os.getenv("GOOGLE_CREDENTIALS_JSON"):
-    creds_json = json.loads(os.environ["GOOGLE_CREDENTIALS_JSON"])
-    CREDS = ServiceAccountCredentials.from_json_keyfile_dict(creds_json, SCOPE)
-else:
-    GOOGLE_CREDENTIALS_FILE = getattr(config, "GOOGLE_CREDENTIALS_FILE", "credentials.json")
-    CREDS = ServiceAccountCredentials.from_json_keyfile_name(GOOGLE_CREDENTIALS_FILE, SCOPE)
+# 🔑 Load credentials either from environment variable (Render) or local file (Windows/Linux)
+try:
+    if os.getenv("GOOGLE_CREDENTIALS_JSON"):
+        # Render: credentials stored as JSON string in environment variable
+        creds_json = json.loads(os.environ["GOOGLE_CREDENTIALS_JSON"])
+        CREDS = ServiceAccountCredentials.from_json_keyfile_dict(creds_json, SCOPE)
+    else:
+        # Local: credentials.json file on disk
+        GOOGLE_CREDENTIALS_FILE = getattr(config, "GOOGLE_CREDENTIALS_FILE", "E:/credentials.json")
+        CREDS = ServiceAccountCredentials.from_json_keyfile_name(GOOGLE_CREDENTIALS_FILE, SCOPE)
+except Exception as e:
+    raise RuntimeError(f"❌ Failed to load Google credentials: {e}")
 
 GC = gspread.authorize(CREDS)
 

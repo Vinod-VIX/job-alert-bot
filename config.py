@@ -1,11 +1,17 @@
 # ===== Configuration =====
+import os
 import pytz
 
 # --- Telegram Bot ---
 BOT_TOKEN = "8293725078:AAG_fRkeDIfXGqudEENiD6wuN_xB87JbqHA"
 
 # --- Google Sheet ---
-GOOGLE_CREDENTIALS_FILE = "credentials.json"   # Service account key file
+# Local file (for development)
+GOOGLE_CREDENTIALS_FILE = r"E:\credentials.json"
+
+# On Render, we'll set GOOGLE_CREDENTIALS_JSON as an environment variable
+GOOGLE_CREDENTIALS_JSON = os.getenv("GOOGLE_CREDENTIALS_JSON")
+
 SHEET_ID = "10TpLVJrWP60btW5plk6m7iMCXqZi9ZHLeV9z7QoqAL8"                # From Sheet URL
 SHEET_NAME = "Sheet1"                          # The tab name inside the Sheet
 ADMIN_ID = 1831664678   # 👈 replace with your own Telegram numeric user ID
