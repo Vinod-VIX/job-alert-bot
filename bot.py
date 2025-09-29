@@ -438,6 +438,29 @@ async def cmd_premiumstatus(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "👉 Use /subscribe to start receiving job alerts."
         )
 
+# --------------------- broadcast message --------------------
+async def cmd_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # Only allow admin
+    if update.effective_user.id != ADMIN_ID:
+        await update.message.reply_text("❌ You are not allowed to use this command.")
+        return
+
+    # Combine arguments to form the broadcast message
+    text = " ".join(context.args)
+    if not text:
+        await update.message.reply_text("Usage: /broadcast <message>")
+        return
+
+    subs = load_json_file(SUBSCRIBERS_FILE, [])
+    for chat_id in subs:
+        try:
+            await context.bot.send_message(chat_id=int(chat_id), text=text, parse_mode="HTML")
+        except Exception as e:
+            logger.warning(f"Failed to send to {chat_id}: {e}")
+
+    await update.message.reply_text(f"✅ Broadcast sent to {len(subs)} subscriber(s).")
+
+
 # ---------------- check premium ----------------
 def is_premium_user(chat_id: int) -> bool:
     users = load_premium_users()
@@ -481,6 +504,8 @@ def main():
         app.add_handler(CommandHandler("addpremium", cmd_addpremium))
         app.add_handler(CommandHandler("removepremium", cmd_removepremium))
         app.add_handler(CommandHandler("premiumstatus", cmd_premiumstatus))
+        app.add_handler(CommandHandler("broadcast", cmd_broadcast))
+
         app.add_handler(CallbackQueryHandler(button_handler))
 
         # ✅ Screenshot handler
