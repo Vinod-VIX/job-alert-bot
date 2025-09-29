@@ -318,7 +318,7 @@ async def cmd_subscribe(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await context.bot.send_photo(
         chat_id=chat_id,
         photo=qr_image,
-        caption=f"📷 Scan & Pay ₹{amount} to {UPI_ID}"
+        caption=f"📷 Scan & Pay ₹{amount} to {UPI_ID} & upload its screenshot here"
     )
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -493,7 +493,6 @@ def run_http_server():
     print(f"HTTP server running on port {port}", flush=True)
     threading.Thread(target=server.serve_forever, daemon=True).start()
 
-
 # ---------------- main ----------------
 def main():
     if "--once" in sys.argv:
@@ -529,3 +528,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
