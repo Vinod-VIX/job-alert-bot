@@ -452,7 +452,7 @@ class SimpleHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
         self.end_headers()
-        self.wfile.write(b"✅ Bot is running on Render!")
+        self.wfile.write("✅ Bot is running on Render!".encode("utf-8"))
 
 def run_http_server():
     port = int(os.environ.get("PORT", 10000))  # Render sets $PORT
