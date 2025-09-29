@@ -20,6 +20,9 @@ from telegram.ext import (
 from sheet_utils import read_sheet_rows, remove_expired_rows
 import config
 
+from http.server import BaseHTTPRequestHandler, HTTPServer
+import threading
+
 # ---------------- logging ----------------
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -443,6 +446,19 @@ def is_premium_user(chat_id: int) -> bool:
         return expiry_date >= datetime.utcnow().date()
     except:
         return False
+        
+# ---------------- Minimal HTTP server for Render ----------------
+class SimpleHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"✅ Bot is running on Render!")
+
+def run_http_server():
+    port = int(os.environ.get("PORT", 10000))  # Render sets $PORT
+    server = HTTPServer(("", port), SimpleHandler)
+    print(f"HTTP server running on port {port}", flush=True)
+    server.serve_forever()
 
 # ---------------- main ----------------
 def main():
@@ -450,6 +466,9 @@ def main():
         bot = Bot(token=BOT_TOKEN)
         asyncio.run(check_jobs(bot))
     else:
+        # start HTTP server in background (for Render)
+        threading.Thread(target=run_http_server, daemon=True).start()
+
         app = ApplicationBuilder().token(BOT_TOKEN).build()
 
         app.add_handler(CommandHandler("start", cmd_start))
@@ -461,7 +480,7 @@ def main():
         app.add_handler(CommandHandler("premiumstatus", cmd_premiumstatus))
         app.add_handler(CallbackQueryHandler(button_handler))
 
-        # ✅ New screenshot handler
+        # ✅ Screenshot handler
         app.add_handler(MessageHandler(filters.PHOTO, handle_screenshot))
 
         app.job_queue.run_repeating(
