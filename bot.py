@@ -326,6 +326,9 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
     if query.data == "copy_upi":
         await query.message.reply_text(f"📌 UPI ID: <code>{UPI_ID}</code>", parse_mode="HTML")
+    elif query.data == "subscribe":
+        # Trigger your existing cmd_subscribe logic
+        await cmd_subscribe(update, context)
 
 # ---------------- Screenshot auto-forward ----------------
 async def handle_screenshot(update: Update, context: ContextTypes.DEFAULT_TYPE):
