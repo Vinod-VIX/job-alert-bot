@@ -476,15 +476,23 @@ def is_premium_user(chat_id: int) -> bool:
 # ---------------- Minimal HTTP server for Render ----------------
 class SimpleHandler(BaseHTTPRequestHandler):
     def do_GET(self):
-        self.send_response(200)
-        self.end_headers()
-        self.wfile.write("✅ Bot is running on Render!".encode("utf-8"))
+        if self.path == "/ping":
+            self.send_response(200)
+            self.send_header("Content-type", "text/plain; charset=utf-8")
+            self.end_headers()
+            self.wfile.write("✅ Bot is alive and ready!".encode("utf-8"))
+        else:
+            self.send_response(200)
+            self.send_header("Content-type", "text/plain; charset=utf-8")
+            self.end_headers()
+            self.wfile.write("✅ Bot is running on Render!".encode("utf-8"))
 
 def run_http_server():
     port = int(os.environ.get("PORT", 10000))  # Render sets $PORT
     server = HTTPServer(("", port), SimpleHandler)
     print(f"HTTP server running on port {port}", flush=True)
-    server.serve_forever()
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+
 
 # ---------------- main ----------------
 def main():
@@ -492,8 +500,8 @@ def main():
         bot = Bot(token=BOT_TOKEN)
         asyncio.run(check_jobs(bot))
     else:
-        # start HTTP server in background (for Render)
-        threading.Thread(target=run_http_server, daemon=True).start()
+        # start HTTP server in background (for Render ping checks)
+        run_http_server()
 
         app = ApplicationBuilder().token(BOT_TOKEN).build()
 
