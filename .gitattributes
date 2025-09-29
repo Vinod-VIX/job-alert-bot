@@ -1,2 +1,32 @@
-# Normalize line endings to LF in repo, but keep CRLF on Windows
+# Handle line endings consistently
 * text=auto
+
+# Python source files: always use LF in repo
+*.py text eol=lf
+
+# Config, requirements, JSON files: always use LF in repo
+*.txt text eol=lf
+*.json text eol=lf
+*.ini text eol=lf
+*.cfg text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+
+# Shell scripts (if any) should use LF
+*.sh text eol=lf
+
+# Batch/PowerShell scripts should use CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Images and binaries: never modify line endings
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.exe binary
+*.dll binary
