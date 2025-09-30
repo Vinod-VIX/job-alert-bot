@@ -23,6 +23,24 @@ import config
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import threading
 
+import fcntl
+
+LOCKFILE_PATH = "/tmp/bot_polling.lock"
+
+def acquire_lock_or_exit():
+    """Try to acquire a lockfile. If another process already holds it, exit."""
+    lock_file = open(LOCKFILE_PATH, "w")
+    try:
+        fcntl.flock(lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        print("✅ Lock acquired, this process will run polling.")
+        return lock_file
+    except BlockingIOError:
+        print("⚠️ Another instance is already running polling. Shutting down this container to save resources.")
+        sys.exit(0)  # exit immediately, Render will recycle this container
+
+# ---------------- global flags ----------------
+BOT_RUNNING = False
+
 # ---------------- logging ----------------
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -501,36 +519,55 @@ def run_http_server():
 
 # ---------------- main ----------------
 def main():
+    global BOT_RUNNING
+    if BOT_RUNNING:
+        print("Bot is already running. Exiting duplicate instance.")
+        return
+    BOT_RUNNING = True
+    
     if "--once" in sys.argv:
         bot = Bot(token=BOT_TOKEN)
         asyncio.run(check_jobs(bot))
-    else:
-        # start HTTP server in background (for Render ping checks)
-        run_http_server()
+        return
+    
+    # --- Lock must be acquired first ---
+    lock_file = acquire_lock_or_exit()  # exits if another instance is running
 
-        app = ApplicationBuilder().token(BOT_TOKEN).build()
+    # start HTTP server only if we are the active container
+    run_http_server()
 
-        app.add_handler(CommandHandler("start", cmd_start))
-        app.add_handler(CommandHandler("stop", cmd_stop))
-        app.add_handler(CommandHandler("resendall", cmd_resendall))
-        app.add_handler(CommandHandler("subscribe", cmd_subscribe))
-        app.add_handler(CommandHandler("addpremium", cmd_addpremium))
-        app.add_handler(CommandHandler("removepremium", cmd_removepremium))
-        app.add_handler(CommandHandler("premiumstatus", cmd_premiumstatus))
-        app.add_handler(CommandHandler("broadcast", cmd_broadcast))
+    # Build bot application
+    app = ApplicationBuilder().token(BOT_TOKEN).build()
+    
+    # --- Handlers ---
+    app.add_handler(CommandHandler("start", cmd_start))
+    app.add_handler(CommandHandler("stop", cmd_stop))
+    app.add_handler(CommandHandler("resendall", cmd_resendall))
+    app.add_handler(CommandHandler("subscribe", cmd_subscribe))
+    app.add_handler(CommandHandler("addpremium", cmd_addpremium))
+    app.add_handler(CommandHandler("removepremium", cmd_removepremium))
+    app.add_handler(CommandHandler("premiumstatus", cmd_premiumstatus))
+    app.add_handler(CommandHandler("broadcast", cmd_broadcast))
 
-        app.add_handler(CallbackQueryHandler(button_handler))
+    app.add_handler(CallbackQueryHandler(button_handler))
 
-        # ✅ Screenshot handler
-        app.add_handler(MessageHandler(filters.PHOTO, handle_screenshot))
+    # ✅ Screenshot handler
+    app.add_handler(MessageHandler(filters.PHOTO, handle_screenshot))
 
-        app.job_queue.run_repeating(
-            lambda ctx: asyncio.create_task(check_jobs(ctx.bot)),
-            interval=CHECK_INTERVAL_MINUTES * 60,
-            first=10,
-        )
+    # --- Job queue ---
+    app.job_queue.run_repeating(
+        lambda ctx: asyncio.create_task(check_jobs(ctx.bot)),
+        interval=CHECK_INTERVAL_MINUTES * 60,
+        first=10,
+    )
 
+    # --- Run polling safely ---
+    try:
         app.run_polling()
+    except KeyboardInterrupt:
+        print("Bot stopped by user")
+    except Exception as e:
+        logger.error(f"Unexpected error in polling: {e}")
 
 if __name__ == "__main__":
     main()
