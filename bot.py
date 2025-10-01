@@ -17,6 +17,9 @@ from telegram.ext import (
     filters,
 )
 
+import qrcode
+from io import BytesIO
+
 from sheet_utils import read_sheet_rows, remove_expired_rows
 import config
 
@@ -224,6 +227,9 @@ async def check_jobs(bot: Bot):
     for chat in subscribers:
         chat_id = int(chat)
         is_premium = is_premium_user(chat_id)
+
+        sent_anything_new = False  # 👈 track if user got something fresh
+
         for source, jid_rows in grouped.items():
             rows_to_send = [r for _, r in jid_rows]
             jids_in_source = [jid for jid, _ in jid_rows]
@@ -234,8 +240,10 @@ async def check_jobs(bot: Bot):
                 for jid in new_in_source:
                     sent_jobs.append(jid)
                     sent_set.add(jid)
+                sent_anything_new = True
 
-        if not is_premium:
+        # 👇 Only show teaser if user is free AND actually received new jobs
+        if (not is_premium) and sent_anything_new:
             try:
                 await bot.send_message(chat_id=chat_id, text=premium_teaser_text(), parse_mode="HTML")
             except Exception:
@@ -248,12 +256,31 @@ async def check_jobs(bot: Bot):
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = str(update.effective_chat.id)
     subs = load_json_file(SUBSCRIBERS_FILE, [])
+
+    is_new = False
     if chat_id not in subs:
         subs.append(chat_id)
         save_json_file(SUBSCRIBERS_FILE, subs)
-        await update.message.reply_text(f"✅ Subscribed to job updates.\nYour Chat ID: {chat_id}")
+        is_new = True
+
+    is_premium = is_premium_user(int(chat_id))
+
+    if is_new:
+        await update.message.reply_text(
+            f"✅ Subscribed to job updates.\nYour Chat ID: {chat_id}"
+        )
     else:
-        await update.message.reply_text(f"ℹ️ Already subscribed.\nYour Chat ID: {chat_id}")
+        await update.message.reply_text(
+            f"ℹ️ Already subscribed.\nYour Chat ID: {chat_id}"
+        )
+
+    # 👇 Free users always get teaser reminder
+    if not is_premium:
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text=premium_teaser_text(),
+            parse_mode="HTML"
+        )
 
 async def cmd_stop(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = str(update.effective_chat.id)
@@ -264,6 +291,14 @@ async def cmd_stop(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ Unsubscribed.")
     else:
         await update.message.reply_text("ℹ️ Not subscribed.")
+
+    # 👇 Always remind free users about premium
+    if not is_premium_user(int(chat_id)):
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text=premium_teaser_text(),
+            parse_mode="HTML"
+        )
 
 async def cmd_resendall(update: Update, context: ContextTypes.DEFAULT_TYPE):
     rows = read_sheet_rows()
@@ -293,9 +328,6 @@ async def cmd_resendall(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_premium:
         await context.bot.send_message(chat_id=chat_id, text=premium_teaser_text(), parse_mode="HTML")
         
-    import qrcode
-    from io import BytesIO
-
 # ---------------- UPI Subscribe ----------------
 from io import BytesIO
 import qrcode
