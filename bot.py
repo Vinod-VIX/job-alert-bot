@@ -131,7 +131,7 @@ def format_job_text(row: Dict[str, str]) -> str:
 # ---------------- footer keyboard ----------------
 def build_footer_keyboard():
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("🔗 Share this bot", url="https://t.me/IndiaJobBot65_bot")],
+        [InlineKeyboardButton("🔗 Share this bot", url="https://t.me/share/url?url=https://t.me/IndiaJobBot65_bot&text=Check%20out%20this%20Job%20Alert%20Bot!")],
         [InlineKeyboardButton("⭐ Upgrade to Premium", callback_data="subscribe")]
     ])
 
